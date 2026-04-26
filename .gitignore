@@ -1,8 +1,12 @@
 build/
-compile_commands.json
 
 *.dds
 *.tga
 
 .claude/settings.local.json
 .vscode/
+
+release/shaders
+release/*.dll
+release/slang*.*
+release/*.slang
