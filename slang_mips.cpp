@@ -103,32 +103,39 @@ std::vector<MipLevel> generateMipsSlang(
         slangSession->createCompositeComponentType(components, 2, linked.writeRef(), diag.writeRef());
         if (diag && diag->getBufferSize() > 0)
             std::cerr << (const char*)diag->getBufferPointer();
-        if (!linked) { std::cerr << "[slang] link failed\n"; return {}; }
+        if (!linked) 
+        { 
+            std::cerr << "[slang] link failed\n"; 
+            return {}; 
+        }
     }
 
     // gfx program + pipeline 
     IShaderProgram::Desc progDesc = {};
     progDesc.slangGlobalScope = linked.get();
     ComPtr<IShaderProgram> program;
-    if (!check(device->createProgram(progDesc, program.writeRef()), "createProgram")) return {};
+    if (!check(device->createProgram(progDesc, program.writeRef()), "createProgram")) 
+        return {}; 
+    
 
     ComputePipelineStateDesc pipelineDesc = {};
     pipelineDesc.program = program.get();
     ComPtr<IPipelineState> pipeline;
-    if (!check(device->createComputePipelineState(pipelineDesc, pipeline.writeRef()),
-               "createComputePipelineState")) return {};
+    if (!check(device->createComputePipelineState(pipelineDesc, pipeline.writeRef()), "createComputePipelineState")) 
+        return {};
 
     // heap + queue 
     ITransientResourceHeap::Desc heapDesc = {};
     heapDesc.constantBufferSize = 4 * 1024;
     ComPtr<ITransientResourceHeap> heap;
-    if (!check(device->createTransientResourceHeap(heapDesc, heap.writeRef()),
-               "createTransientResourceHeap")) return {};
+    if (!check(device->createTransientResourceHeap(heapDesc, heap.writeRef()), "createTransientResourceHeap")) 
+        return {};
 
     ICommandQueue::Desc queueDesc = {};
     queueDesc.type = ICommandQueue::QueueType::Graphics;
     ComPtr<ICommandQueue> queue;
-    if (!check(device->createCommandQueue(queueDesc, queue.writeRef()), "createCommandQueue")) return {};
+    if (!check(device->createCommandQueue(queueDesc, queue.writeRef()), "createCommandQueue")) 
+        return {};
 
     const uint32_t nMips = mipCount(width, height);
 
@@ -142,14 +149,16 @@ std::vector<MipLevel> generateMipsSlang(
     texDesc.size.depth    = 1;
     texDesc.format        = Format::R8G8B8A8_UNORM;
     texDesc.defaultState  = ResourceState::CopyDestination;
-    texDesc.allowedStates = ResourceStateSet(
+    texDesc.allowedStates = ResourceStateSet
+    (
         ResourceState::CopyDestination,
         ResourceState::UnorderedAccess,
-        ResourceState::CopySource);
+        ResourceState::CopySource
+    );
 
     ComPtr<ITextureResource> gpuTex;
-    if (!check(device->createTextureResource(texDesc, nullptr, gpuTex.writeRef()),
-               "createTextureResource")) return {};
+    if (!check(device->createTextureResource(texDesc, nullptr, gpuTex.writeRef()), "createTextureResource")) 
+        return {};
 
     // upload mip 0
     {
@@ -162,16 +171,21 @@ std::vector<MipLevel> generateMipsSlang(
         ComPtr<ICommandBuffer> cmdBuf = heap->createCommandBuffer();
         {
             IResourceCommandEncoder* enc = cmdBuf->encodeResourceCommands();
-            enc->uploadTextureData(
+            enc->uploadTextureData
+            (
                 gpuTex,
                 mipRange(0),
                 ITextureResource::Offset3D{0, 0, 0},
                 ITextureResource::Extents{(int)width, (int)height, 1},
-                &subData, 1);
+                &subData, 1
+            );
             ITextureResource* texPtr = gpuTex.get();
-            enc->textureBarrier(1, &texPtr,
+            enc->textureBarrier
+            (
+                1, &texPtr,
                 ResourceState::CopyDestination,
-                ResourceState::UnorderedAccess);
+                ResourceState::UnorderedAccess
+            );
             enc->endEncoding();
         }
         cmdBuf->close();
@@ -193,13 +207,13 @@ std::vector<MipLevel> generateMipsSlang(
 
         viewDesc.subresourceRange = mipRange(mip);
         ComPtr<IResourceView> srcView;
-        if (!check(device->createTextureView(gpuTex, viewDesc, srcView.writeRef()),
-                   "createTextureView src")) return {};
+        if (!check(device->createTextureView(gpuTex, viewDesc, srcView.writeRef()),"createTextureView src")) 
+            return {};
 
         viewDesc.subresourceRange = mipRange(mip + 1);
         ComPtr<IResourceView> dstView;
-        if (!check(device->createTextureView(gpuTex, viewDesc, dstView.writeRef()),
-                   "createTextureView dst")) return {};
+        if (!check(device->createTextureView(gpuTex, viewDesc, dstView.writeRef()), "createTextureView dst")) 
+            return {};
 
         heap->synchronizeAndReset();
         ComPtr<ICommandBuffer> cmdBuf = heap->createCommandBuffer();
@@ -207,15 +221,22 @@ std::vector<MipLevel> generateMipsSlang(
             IComputeCommandEncoder* encoder = cmdBuf->encodeComputeCommands();
             IShaderObject* rootObj = encoder->bindPipeline(pipeline);
 
-            ShaderOffset srcOff = {}; srcOff.bindingRangeIndex = 0;
-            ShaderOffset dstOff = {}; dstOff.bindingRangeIndex = 1;
+            ShaderOffset srcOff = {}; 
+            srcOff.bindingRangeIndex = 0;
+            ShaderOffset dstOff = {}; 
+            dstOff.bindingRangeIndex = 1;
             check(rootObj->setResource(srcOff, srcView), "setResource src");
             check(rootObj->setResource(dstOff, dstView), "setResource dst");
 
-            check(encoder->dispatchCompute(
-                ((int)dstW + 15) / 16,
-                ((int)dstH + 15) / 16,
-                1), "dispatchCompute");
+            check
+            (   encoder->dispatchCompute
+                (
+                    ((int)dstW + 15) / 16,
+                    ((int)dstH + 15) / 16,
+                    1
+                ), 
+                "dispatchCompute"
+            );
             encoder->endEncoding();
         }
         cmdBuf->close();
@@ -230,9 +251,12 @@ std::vector<MipLevel> generateMipsSlang(
         {
             IResourceCommandEncoder* enc = cmdBuf->encodeResourceCommands();
             ITextureResource* texPtr = gpuTex.get();
-            enc->textureBarrier(1, &texPtr,
+            enc->textureBarrier
+            (
+                1, &texPtr,
                 ResourceState::UnorderedAccess,
-                ResourceState::CopySource);
+                ResourceState::CopySource
+            );
             enc->endEncoding();
         }
         cmdBuf->close();
@@ -263,7 +287,8 @@ std::vector<MipLevel> generateMipsSlang(
         bd.memoryType    = MemoryType::ReadBack;
 
         ComPtr<IBufferResource> staging;
-        if (!check(device->createBufferResource(bd, nullptr, staging.writeRef()), "staging")) return {};
+        if (!check(device->createBufferResource(bd, nullptr, staging.writeRef()), "staging")) 
+            return {};
 
         // std::cerr << "[slang] readback mip " << mip << " stride=" << alignedStride << "\n";
 
@@ -271,12 +296,14 @@ std::vector<MipLevel> generateMipsSlang(
         ComPtr<ICommandBuffer> cmdBuf = heap->createCommandBuffer();
         {
             IResourceCommandEncoder* encoder = cmdBuf->encodeResourceCommands();
-            encoder->copyTextureToBuffer(
+            encoder->copyTextureToBuffer
+            (
                 staging, 0, sz, alignedStride,
                 gpuTex, ResourceState::CopySource,
                 mipRange(mip),
                 ITextureResource::Offset3D{0, 0, 0},
-                ITextureResource::Extents{(int)mW, (int)mH, 1});
+                ITextureResource::Extents{(int)mW, (int)mH, 1}
+            );
             encoder->endEncoding();
         }
         cmdBuf->close();
@@ -286,7 +313,8 @@ std::vector<MipLevel> generateMipsSlang(
 
         void* mapped = nullptr;
         MemoryRange range{ 0, sz };
-        if (!check(staging->map(&range, &mapped), "buffer.map")) return {};
+        if (!check(staging->map(&range, &mapped), "buffer.map")) 
+            return {};
 
         // copy row by row to strip alignment padding
         const uint8_t* src = static_cast<const uint8_t*>(mapped);
