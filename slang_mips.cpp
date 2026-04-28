@@ -30,7 +30,7 @@ static gfx::SubresourceRange mipRange(uint32_t mip)
 {
     gfx::SubresourceRange r = {};
     r.aspectMask     = gfx::TextureAspect::Color;
-    r.mipLevel       = (int)mip;
+    r.mipLevel       = static_cast<int>(mip);
     r.mipLevelCount  = 1;
     r.baseArrayLayer = 0;
     r.layerCount     = 1;
@@ -89,7 +89,7 @@ std::vector<MipLevel> generateMipsSlang(
         ComPtr<slang::IBlob> diag;
         shaderModule = slangSession->loadModule("buildmip", diag.writeRef());
         if (diag && diag->getBufferSize() > 0)
-            std::cerr << (const char*)diag->getBufferPointer();
+            std::cerr << static_cast<const char*>(diag->getBufferPointer());
         if (!shaderModule) { std::cerr << "[slang] loadModule failed\n"; return {}; }
 
         if (!check(shaderModule->findEntryPointByName("computeMain", entryPoint.writeRef()),
@@ -102,7 +102,7 @@ std::vector<MipLevel> generateMipsSlang(
         ComPtr<slang::IBlob> diag;
         slangSession->createCompositeComponentType(components, 2, linked.writeRef(), diag.writeRef());
         if (diag && diag->getBufferSize() > 0)
-            std::cerr << (const char*)diag->getBufferPointer();
+            std::cerr << static_cast<const char*>(diag->getBufferPointer());
         if (!linked) 
         { 
             std::cerr << "[slang] link failed\n"; 
@@ -142,10 +142,10 @@ std::vector<MipLevel> generateMipsSlang(
     // GPU texture (all mips, UAV) 
     ITextureResource::Desc texDesc = {};
     texDesc.type          = IResource::Type::Texture2D;
-    texDesc.numMipLevels  = (int)nMips;
+    texDesc.numMipLevels  = static_cast<int>(nMips);
     texDesc.arraySize     = 1;
-    texDesc.size.width    = (int)width;
-    texDesc.size.height   = (int)height;
+    texDesc.size.width    = static_cast<int>(width);
+    texDesc.size.height   = static_cast<int>(height);
     texDesc.size.depth    = 1;
     texDesc.format        = Format::R8G8B8A8_UNORM;
     texDesc.defaultState  = ResourceState::CopyDestination;
@@ -176,7 +176,7 @@ std::vector<MipLevel> generateMipsSlang(
                 gpuTex,
                 mipRange(0),
                 ITextureResource::Offset3D{0, 0, 0},
-                ITextureResource::Extents{(int)width, (int)height, 1},
+                ITextureResource::Extents{static_cast<int>(width), static_cast<int>(height), 1},
                 &subData, 1
             );
             ITextureResource* texPtr = gpuTex.get();
@@ -231,8 +231,8 @@ std::vector<MipLevel> generateMipsSlang(
             check
             (   encoder->dispatchCompute
                 (
-                    ((int)dstW + 15) / 16,
-                    ((int)dstH + 15) / 16,
+                    (static_cast<int>(dstW) + 15) / 16,
+                    (static_cast<int>(dstH) + 15) / 16,
                     1
                 ), 
                 "dispatchCompute"
@@ -278,7 +278,7 @@ std::vector<MipLevel> generateMipsSlang(
 
         result[mip].width  = mW;
         result[mip].height = mH;
-        result[mip].pixels.resize((size_t)mW * mH * 4);
+        result[mip].pixels.resize(static_cast<size_t>(mW) * mH * 4);
 
         IBufferResource::Desc bd = {};
         bd.sizeInBytes   = sz;
@@ -302,7 +302,7 @@ std::vector<MipLevel> generateMipsSlang(
                 gpuTex, ResourceState::CopySource,
                 mipRange(mip),
                 ITextureResource::Offset3D{0, 0, 0},
-                ITextureResource::Extents{(int)mW, (int)mH, 1}
+                ITextureResource::Extents{static_cast<int>(mW), static_cast<int>(mH), 1}
             );
             encoder->endEncoding();
         }

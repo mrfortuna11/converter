@@ -69,8 +69,8 @@ int main(int argc, char* argv[])
         std::vector<MipLevel> mips = generateMipsSlang
         (
             image.GetPixels(),
-            (uint32_t)meta.width,
-            (uint32_t)meta.height,
+            static_cast<uint32_t>(meta.width),
+            static_cast<uint32_t>(meta.height),
             shaderDir.c_str()
         );
 
